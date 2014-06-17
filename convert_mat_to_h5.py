@@ -11,6 +11,7 @@ print os.getcwd()
 
 
 def convert(store, cats):
+
     for cat in cats:
         store.createGroup("/", cat)
 
