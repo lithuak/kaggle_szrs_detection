@@ -4,9 +4,6 @@ import tables as tb
 import numpy as np
 from seizure_detection import path, get_subject_limits, load_segment
 
-# панда-индексы с иерархической индексацией
-# map-reduce?
-
 print os.getcwd()
 
 
@@ -18,15 +15,21 @@ def convert(store, cats):
     atom = tb.Atom.from_dtype(np.dtype(np.float64))
     filters = tb.Filters(complib='blosc', complevel=6)
 
+    index = []
+
     for cat in cats:
         for subj in os.listdir(path):
             print subj
             lims = get_subject_limits(subj)
             grp = store.createGroup("/" + cat, subj)
             for i in range(1, lims[cat] + 1):
+                index.append((cat, subj, i))
                 data = load_segment(subj, i, cat)["data"]
                 ca = store.create_carray(grp, "s_{}".format(i), atom, data.shape, filters=filters)
                 ca[:] = data
+
+    pindex = store.createArray("/", "index", index)
+    pindex[:] = index
 
     store.flush()
     store.close()
