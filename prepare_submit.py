@@ -1,33 +1,30 @@
 # -*- coding: utf-8 -*-
-import os
-from seizure_detection import path, get_subject_limits
-from pandas.io.pickle import read_pickle, to_pickle
-
-f = open(path + "/../result.csv", "w")
-
-def pr(s):
-    print s
-    f.write(s+"\n")
+import pandas as pd
+import tables
+from pandas.io.pickle import read_pickle
 
 
 if __name__ == "__main__":
-    test_df = read_pickle(path + "/../test_shuffled.pickle")
-    z = read_pickle(path + "/../result_vector.pickle")
 
-    # merge test set and results
-    df = test_df[["seg", "subject"]]
-    df["result"] = z
+    # concat results from all classifiers
+    result_dict = read_pickle("data/result.pickle")
 
-    # cals expected latency
-    # train_df = read_pickle(path + "/../train_shuffled.pickle")
-    # print train_df[train_df["ictal"]==False]["latency"]
+    df = pd.DataFrame()
 
-    pr("clip,seizure,early")
+    for k, v in result_dict.iteritems():
+        df = df.append(v[["subj", "seg", "result"]])
 
-    for subj in os.listdir(path):
-        lims = get_subject_limits(subj)
-        for i in range(1, lims["test"]+1):
-            result = df[df["seg"] == i][df["subject"] == subj]["result"].values[0]
-            result_out = 1 if result else 0
-            pr("{}_test_segment_{}.mat,{},{}".format(subj, i, result_out, result_out))
+    df = df.set_index(["subj", "seg"])
+
+    # output results in order of index
+    print "clip,seizure,early"
+    h5 = tables.open_file("data/test.h5", "r")
+
+    for row in h5.get_node("/index").read():
+        cat, subj, seg = row[0], row[1], int(row[2])
+        p = df.ix[subj].ix[seg]["result"]
+        print "{0}_test_segment_{1}.mat,{2},{2}".format(subj, int(seg), p)
+
+    h5.close()
+
 

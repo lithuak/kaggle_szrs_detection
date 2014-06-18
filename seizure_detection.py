@@ -9,18 +9,6 @@ import matplotlib.pyplot as plt
 #   a. "ictal" segments are 1sec parts of one long record
 #   b. "interictal" are random independent 1sec records
 
-# + таки надо доставать всякие фичи (амплитуду, разброс, может отдельно по каналам?..
-# и смотреть корреляцию с детектом. на их основе тренировать классифайер, потом ансамбль.
-
-# получается, что это - signal processing. Надо смотреть "frequency spectra", "FFT",
-# соревнование про китов и думать как это делать (как класс. сигналы)
-
-# классификатор будет запускаться для каждого из 16 каналов, а потом как-то просто суммировать
-# это
-
-# построить "CV chain": фичи, классифайер, подсчет счета...
-
-# path = 'D:/kaggle/seizure_detection/clips'
 path = '/media/soul/Data/kaggle/seizure_detection/clips'
 
 

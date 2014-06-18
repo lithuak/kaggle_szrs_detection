@@ -4,6 +4,11 @@ from seizure_detection import path
 from pandas.io.pickle import read_pickle, to_pickle
 from sklearn.ensemble import RandomForestClassifier
 
+# TODO:
+# 4) feature importance
+# 1) try log_probabs
+# 2) fft
+# 3) more data
 
 def prepare_cv_sets():
     df = read_pickle("data/features_train.pickle")
@@ -32,29 +37,9 @@ def prepare_cv_sets():
     return train_X, train_y, test_X, test_y
 
 
-def prepare_combat_sets():
-    train_X = read_pickle(path + "/../train_shuffled.pickle")
-    test_X = read_pickle(path + "/../test_shuffled.pickle")
-
-    # delete subject related fields
-    del train_X["seg"]
-    del train_X["subject"]
-    del test_X["seg"]
-    del test_X["subject"]
-
-    # divide into data set and target
-    train_y = train_X["szr"]
-    del train_X["szr"]
-
-    test_y = test_X["szr"]
-    del test_X["szr"]
-
-    return train_X, train_y, test_X, test_y
-
-
 def dirty_job(train_X, train_y, test_X):
     # create classifier
-    rf = RandomForestClassifier(n_estimators=200, n_jobs=8,
+    rf = RandomForestClassifier(n_estimators=4000, n_jobs=8,
                                 verbose=10)
 
     # train
@@ -64,34 +49,37 @@ def dirty_job(train_X, train_y, test_X):
 
     # predict
     print "Predicting"
-    z = rf.predict(test_X)
-    print "Ready!"
 
-    # save
-    to_pickle(z, path + "data/z.pickle")
+    # TODO: ?! try predict_log
+    z = rf.predict_proba(test_X)
+    print "Ready!"
 
     return z
 
+
 def go():
-    # train_X, train_y, test_X, test_y = prepare_combat_sets()
-    train_X, train_y, test_X, test_y = prepare_cv_sets()
+    train_dict = read_pickle("data/features_train.pickle")
+    test_dict = read_pickle("data/features_test.pickle")
 
-    z = dirty_job(train_X, train_y, test_X)
+    for k in train_dict.iterkeys():
+        data_columns = [col for col in train_dict[k].columns
+                        if col not in set(["seg", "subj", "szr"])]
 
-    n_correct = sum(c[0] == c[1] for c in zip(z, test_y))
-    n_total = len(z)
+        z = dirty_job(train_dict[k][data_columns],
+                      train_dict[k]["szr"],
+                      test_dict[k][data_columns])
 
-    print n_correct, n_total
-    print n_correct*100.0/n_total
+        test_dict[k]["result"] = z[:, 1]
+
+    # save
+    to_pickle(test_dict, "data/result.pickle")
+
+    # !+ calc AUC
+    # ...
 
 
 if __name__ == "__main__":
     go()
 
-    # save z to file
-    # group by and calculate real score
-    # save random forest to file
-    # classify for test set
-    # output, submit
 
 

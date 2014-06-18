@@ -19,21 +19,20 @@ from pandas.io.pickle import read_pickle, to_pickle
 
 def genfeu_for_sample(data):
     nchan, nsample = data.shape
-    return pd.DataFrame({
-                "min": np.amin(data, 1),
-                "max": np.amax(data, 1),
-                "sum_norm": np.sum(data, 1) * 1000000000000000 / nsample,
-                "mean": np.mean(data, 1) * 1000000000000000,
-                "var": np.var(data, 1),
-                "std": np.std(data, 1),
-                "medium": np.median(data, 1),
-                "channel": np.arange(nchan)
-           })
+    return nchan, np.concatenate([
+        # !+ this can be automated
+        np.amin(data, 1),
+        np.amax(data, 1),
+        np.sum(data, 1) * 1000000000000000 / nsample,
+        np.mean(data, 1) * 1000000000000000,
+        np.var(data, 1),
+        np.std(data, 1),
+        np.median(data, 1),
+    ])
 
 
 def genfeu_for_dataset(store):
-
-    r = pd.DataFrame()
+    datasets = {}
 
     for row in store.get_node("/index").read():
         cat, subj, seg = row[0], row[1], int(row[2])
@@ -43,30 +42,42 @@ def genfeu_for_dataset(store):
         data = store.get_node("/{}/{}/s_{}".format(cat, subj, seg)).read()
 
         # calculate features
-        features = genfeu_for_sample(data)
-        features["subj"] = subj
-        features["seg"] = seg
-        features["szr"] = 1.0 if cat == "ictal" else 0.0
-        features["freq"] = data.shape[1]
+        nchan, features = genfeu_for_sample(data)
 
-        r = r.append(features, ignore_index=True)
+        # make row
+        row = {
+                "subj": subj,
+                "seg": seg,
+                "szr": 1.0 if cat == "ictal" else 0.0,
+               }
+        row.update({"f_{}".format(i): f for i, f in enumerate(features) })
 
-    return r
+        # append to corresponding dataset
+        if not nchan in datasets:
+            datasets[nchan] = []
+        datasets[nchan].append(row)
+
+    return {k: pd.DataFrame(v) for k, v in datasets.iteritems()}
+
 
 
 def genfeu_for_file(file):
     print "Reading " + file + " set in memory, please wait :)"
-    h5 = tables.open_file("data/" + file + ".h5", "r", driver="H5FD_CORE")
-    # h5 = tables.open_file("data/" + file + ".h5", "r")
+    # h5 = tables.open_file("data/" + file + ".h5", "r", driver="H5FD_CORE")
+    h5 = tables.open_file("data/" + file + ".h5", "r")
     print "Done"
     print "Traversing"
-    df = genfeu_for_dataset(h5)
+    r = genfeu_for_dataset(h5)
     h5.close()
-    to_pickle(df, "data/features_" + file + ".pickle")
+    to_pickle(r, "data/features_" + file + ".pickle")
+
+    # for k, v in r.iteritems():
+    #     print k, v.shape
+
 
 
 if __name__ == "__main__":
-    # genfeu_for_file("train")
+    genfeu_for_file("train")
     genfeu_for_file("test")
 
 # TODO:
