@@ -42,13 +42,6 @@ def convert_all():
     convert(test_file, ["test"])
 
 
-# def process_sample(sample_id, set_cat, subject, cat, segment, channel, data):
-#     pass
-#
-#     return sample_id, {"a" + channel: 12,
-#                        "b" + channel: 13}
-
-
 if __name__ == "__main__":
     convert_all()
 

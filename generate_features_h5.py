@@ -5,30 +5,24 @@ import numpy.fft as fft
 import pandas as pd
 from pandas.io.pickle import read_pickle, to_pickle
 
-
-#
-# Optimize:
-#
-# ? multindex
-# ? map-reduce
-# ? pytables for features instead of pandas?
-#
-
-
-
-
 def genfeu_for_sample(data):
     nchan, nsample = data.shape
-    return nchan, np.concatenate([
-        # !+ this can be automated
-        np.amin(data, 1),
-        np.amax(data, 1),
-        np.sum(data, 1) * 1000000000000000 / nsample,
-        np.mean(data, 1) * 1000000000000000,
-        np.var(data, 1),
-        np.std(data, 1),
-        np.median(data, 1),
-    ])
+    fvs = {
+        "min": np.amin(data, 1),
+        "max": np.amax(data, 1),
+        "sum": np.sum(data, 1) * 1000000000000000 / nsample,
+        "mean": np.mean(data, 1) * 1000000000000000,
+        "var": np.var(data, 1),
+        "std": np.std(data, 1),
+        "median": np.median(data, 1),
+    }
+    features = {"{}_{}".format(k, i): vi for k, v in fvs.iteritems() for i, vi in enumerate(v)}
+
+    spectrum = fft.fft(data, 8).flatten()
+    features.update({"freq_{}".format(i): z.real for i, z in enumerate(spectrum)})
+
+    return nchan, features
+
 
 
 def genfeu_for_dataset(store):
@@ -50,8 +44,9 @@ def genfeu_for_dataset(store):
                 "seg": seg,
                 "szr": 1.0 if cat == "ictal" else 0.0,
                }
-        row.update({"f_{}".format(i): f for i, f in enumerate(features) })
+        row.update(features)
 
+        #
         # append to corresponding dataset
         if not nchan in datasets:
             datasets[nchan] = []
@@ -71,24 +66,8 @@ def genfeu_for_file(file):
     h5.close()
     to_pickle(r, "data/features_" + file + ".pickle")
 
-    # for k, v in r.iteritems():
-    #     print k, v.shape
-
 
 
 if __name__ == "__main__":
     genfeu_for_file("train")
-    genfeu_for_file("test")
 
-# TODO:
-#
-# 1) Try to normalize over min and max in whole dataset?...
-#
-"""
- + histogram
- + ffc
- + more data
- + other models
- + see what we can get from channel name (position?..)
- + ...and then frequency forensics is go
-"""

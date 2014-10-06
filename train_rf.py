@@ -2,13 +2,7 @@
 import random
 from seizure_detection import path
 from pandas.io.pickle import read_pickle, to_pickle
-from sklearn.ensemble import RandomForestClassifier
-
-# TODO:
-# 4) feature importance
-# 1) try log_probabs
-# 2) fft
-# 3) more data
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
 
 def prepare_cv_sets():
     df = read_pickle("data/features_train.pickle")
@@ -39,8 +33,7 @@ def prepare_cv_sets():
 
 def dirty_job(train_X, train_y, test_X):
     # create classifier
-    rf = RandomForestClassifier(n_estimators=4000, n_jobs=8,
-                                verbose=10)
+    rf = ExtraTreesClassifier(n_estimators=4000, n_jobs=8, verbose=10)
 
     # train
     print "Training..."
@@ -50,7 +43,6 @@ def dirty_job(train_X, train_y, test_X):
     # predict
     print "Predicting"
 
-    # TODO: ?! try predict_log
     z = rf.predict_proba(test_X)
     print "Ready!"
 
@@ -65,17 +57,14 @@ def go():
         data_columns = [col for col in train_dict[k].columns
                         if col not in set(["seg", "subj", "szr"])]
 
-        z = dirty_job(train_dict[k][data_columns],
-                      train_dict[k]["szr"],
-                      test_dict[k][data_columns])
+        z = dirty_job(train_dict[k][data_columns].values,
+                      train_dict[k]["szr"].values,
+                      test_dict[k][data_columns].values)
 
         test_dict[k]["result"] = z[:, 1]
 
     # save
     to_pickle(test_dict, "data/result.pickle")
-
-    # !+ calc AUC
-    # ...
 
 
 if __name__ == "__main__":
